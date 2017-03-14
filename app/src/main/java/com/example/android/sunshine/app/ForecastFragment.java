@@ -1,11 +1,15 @@
 package com.example.android.sunshine.app;
 
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Typeface;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationManager;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -58,6 +62,9 @@ public class ForecastFragment extends Fragment {
     private WeatherDb mDbAdapter;
     private Cursor mCursor;
     private SimpleCursorAdapter mCursorAd;
+    private static Location currentlocation;
+    private LocationManager locationManager;
+    public static Criteria criteria;
     ListView listView;
 
     private void WeatherExecuter() {
@@ -67,8 +74,18 @@ public class ForecastFragment extends Fragment {
         weatherTask.execute(location);
 
     }
-    private void GetLoc(){
-        
+    private Location GetLoc(){
+        locationManager = (LocationManager) getActivity().getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
+
+        // setup bestProvider
+
+        criteria = new Criteria();
+        criteria.setAccuracy(Criteria.ACCURACY_FINE);
+        String bestprovider = locationManager.getBestProvider(criteria, true);
+
+        // get an initial current location
+        currentlocation = locationManager.getLastKnownLocation(bestprovider);
+        return currentlocation;
     }
     private void ListPopulater(){
         mDbAdapter = new WeatherDb(getActivity().getApplicationContext());
@@ -184,6 +201,9 @@ public class ForecastFragment extends Fragment {
         TextView tv1 = (TextView)rootView.findViewById(R.id.textView2);
         Typeface header_font = Typeface.createFromAsset(getActivity().getAssets(), "fonts/plm85c.ttf");
         tv1.setTypeface(header_font);
+
+        TextView banner_text = (TextView) rootView.findViewById(R.id.textView);
+        banner_text.setText(Double.toString(GetLoc().getLatitude())+" "+Double.toString(GetLoc().getLongitude()));
 
         return rootView;
     }
