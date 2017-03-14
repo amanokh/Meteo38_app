@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Градусник</string>
+    <string name="action_settings">Настройки</string>
+    <string name="action_refresh">Обновить</string>
+    <string name="title_activity_detail">Подробнее о погоде</string>
+    <string name="title_activity_settings">Настройки</string>
+    <string name="location_setting">Местоположение (индекс)</string>
+    <string name="units_setting">Единицы измерения</string>
+    <string name="units_f_label">Фаренгейты</string>
+    <string name="units_c_label">градусы Цельсия</string>
+    <string name="action_map">Показать на карте</string>
+    <string name="action_share">Поделиться</string>
+</resources>

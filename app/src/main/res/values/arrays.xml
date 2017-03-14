@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string-array name="units_keys">
+        <item>@string/units_c_label</item>
+        <item>@string/units_f_label</item>
+    </string-array>
+    <string-array name="units_values">
+        <item>@string/units_c</item>
+        <item>@string/units_f</item>
+    </string-array>
+</resources>
