@@ -46,11 +46,11 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Vector;
+
 
 public class ForecastFragment extends Fragment {
     private SwipeRefreshLayout mSwipeRefreshLayout;
@@ -62,51 +62,34 @@ public class ForecastFragment extends Fragment {
     private WeatherDb mDbAdapter;
     private Cursor mCursor;
     private SimpleCursorAdapter mCursorAd;
-    private static Location currentlocation;
-    private LocationManager locationManager;
-    public static Criteria criteria;
     ListView listView;
 
     private void WeatherExecuter() {
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        String location = sharedPref.getString(getString(R.string.location_key), getString(R.string.location_default));
         FetchWeatherTask weatherTask = new FetchWeatherTask();
-        weatherTask.execute(location);
-
+        weatherTask.execute();
     }
-    private Location GetLoc(){
-        locationManager = (LocationManager) getActivity().getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
 
-        // setup bestProvider
-
-        criteria = new Criteria();
-        criteria.setAccuracy(Criteria.ACCURACY_FINE);
-        String bestprovider = locationManager.getBestProvider(criteria, true);
-
-        // get an initial current location
-        currentlocation = locationManager.getLastKnownLocation(bestprovider);
-        return currentlocation;
-    }
     private void ListPopulater(){
         mDbAdapter = new WeatherDb(getActivity().getApplicationContext());
         mCursor = mDbAdapter.getAllItems();
 
 
         String[] from = new String[] { WeatherContract.WeatherEntry.COLUMN_TITLE, WeatherContract.WeatherEntry.COLUMN_TEMP, WeatherContract.WeatherEntry.COLUMN_ADDRESS};
-        int[] to = new int[] { R.id.list_item_title_textview, R.id.list_item_forecast_temp, R.id.list_item_addr_textview };
+        int[] to = new int[] { R.id.list_item_title_textview, R.id.list_item_forecast_temp, R.id.list_item_addr_textview};
 
         mCursorAd = new SimpleCursorAdapter(getActivity().getApplicationContext(), R.layout.list_item_forecast, mCursor, from, to, 0);
         listView.setAdapter(mCursorAd);
         mDbAdapter.close();
     }
     public void onStart(){
-        super.onStart();
         ListPopulater();
         WeatherExecuter();
-
+        super.onStart();
     }
-
-    private void showMap() {
+    public void onStop(){
+        super.onStop();
+    }
+    private void showMap() { //button
         SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
         String location = sharedPref.getString(getString(R.string.location_key), getString(R.string.location_default));
         Uri geoUri = Uri.parse("geo:0,0?").buildUpon().appendQueryParameter("q", location).build();
@@ -126,7 +109,6 @@ public class ForecastFragment extends Fragment {
         // Add this line in order for this fragment to handle menu events.
         setHasOptionsMenu(true);
         dbHelper = new WeatherDbHelper(getActivity().getApplicationContext());
-
 
     }
 
@@ -173,19 +155,6 @@ public class ForecastFragment extends Fragment {
                 android.R.color.holo_red_light);
 
         List<String> weekForecast = new ArrayList<String>(Arrays.asList(ForecastFragment.data));
-
-        // Now that we have some dummy forecast data, create an ArrayAdapter.
-        // The ArrayAdapter will take data from a source (like our dummy forecast) and
-        // use it to populate the ListView it's attached to.
-        /*mForecastAdapter =
-                new ArrayAdapter<String>(
-                        getActivity(), // The current context (this activity)
-                        R.layout.list_item_forecast, // The name of the layout ID.
-                        R.id.list_item_forecast_textview, // The ID of the textview to populate.
-                        weekForecast);*/
-
-
-        // Get a reference to the ListView, and attach this adapter to it.
         listView = (ListView) rootView.findViewById(R.id.listview_forecast);
 
         /*listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
@@ -201,30 +170,16 @@ public class ForecastFragment extends Fragment {
         TextView tv1 = (TextView)rootView.findViewById(R.id.textView2);
         Typeface header_font = Typeface.createFromAsset(getActivity().getAssets(), "fonts/plm85c.ttf");
         tv1.setTypeface(header_font);
-
         TextView banner_text = (TextView) rootView.findViewById(R.id.textView);
-        banner_text.setText(Double.toString(GetLoc().getLatitude())+" "+Double.toString(GetLoc().getLongitude()));
+        //banner_text.setText(String.valueOf(MainActivity.getThisLocation().getLatitude())+" "+String.valueOf(mLastLocation.getLongitude())+" "+String.valueOf(mLastLocation.getAccuracy()));
 
         return rootView;
     }
 
-    public class FetchWeatherTask extends AsyncTask<String, Void, String[]> {
+    public class FetchWeatherTask extends AsyncTask<Void, Void, String[]> {
 
         private final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
 
-        /* The date/time conversion code is going to be moved outside the asynctask later,
-         * so for convenience we're breaking it out into its own method now.
-         */
-        private String getReadableDateString(long time){
-            // Because the API returns a unix timestamp (measured in seconds),
-            // it must be converted to milliseconds in order to be converted to valid date.
-            SimpleDateFormat shortenedDateFormat = new SimpleDateFormat("EEE MMM dd");
-            return shortenedDateFormat.format(time);
-        }
-
-        /**
-         * Prepare the weather high/lows for presentation.
-         */
         private String formatTemp(double temp) {
             // For presentation, assume the user doesn't care about tenths of a degree.
             SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
@@ -248,7 +203,7 @@ public class ForecastFragment extends Fragment {
 
 
 
-        private String[] getWeatherDataFromJson38(String forecastJsonStr)
+        private void getWeatherDataFromJson38(String forecastJsonStr)
                 throws JSONException {
 
             // These are the names of the JSON objects that need to be extracted.
@@ -287,7 +242,7 @@ public class ForecastFragment extends Fragment {
 
                     double c_lat;
                     double c_lon;
-
+                    double dist;
                     JSONObject station = stationsArray.getJSONObject(i);
                     JSONObject weatherObject = station.getJSONObject(M38_info);
                     JSONArray locationArray = station.getJSONArray(M38_coord);
@@ -370,11 +325,6 @@ public class ForecastFragment extends Fragment {
                     } else
                         Log.d(LOG_TAG, "0 rows");
                     c.close();
-
-
-
-
-
                 }
 
             } catch (JSONException e) {
@@ -386,16 +336,9 @@ public class ForecastFragment extends Fragment {
             for (String s : resultStrs) {
                 Log.v(LOG_TAG, "Forecast entry: " + s);
             }
-            return resultStrs;
-
         }
         @Override
-        protected String[] doInBackground(String... params) {
-
-            // If there's no zip code, there's nothing to look up.  Verify size of params.
-            if (params.length == 0) {
-                return null;
-            }
+        protected String[] doInBackground(Void... params) {
 
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
@@ -403,12 +346,7 @@ public class ForecastFragment extends Fragment {
             BufferedReader reader = null;
 
             // Will contain the raw JSON response as a string.
-            String forecastJsonStr = null;
-
-            String format = "json";
-            String units = "metric";
-            int numDays = 7;
-
+            String weatherJsonStr = null;
             try {
 
 
@@ -440,10 +378,10 @@ public class ForecastFragment extends Fragment {
                     // Stream was empty.  No point in parsing.
                     return null;
                 }
-                forecastJsonStr = buffer.toString();
+                weatherJsonStr = buffer.toString();
                 CheckConnect = true;
 
-                Log.v(LOG_TAG, "Forecast JSON: " + forecastJsonStr);
+                Log.v(LOG_TAG, "Forecast JSON: " + weatherJsonStr);
             } catch (IOException e) {
                 Log.e(LOG_TAG, "Error: conntection not established", e);
                 CheckConnect = false;
@@ -462,7 +400,7 @@ public class ForecastFragment extends Fragment {
             }
 
             try {
-                return getWeatherDataFromJson38(forecastJsonStr);
+                getWeatherDataFromJson38(weatherJsonStr);
             } catch (JSONException e) {
                 Log.e(LOG_TAG, e.getMessage(), e);
                 e.printStackTrace();
@@ -477,10 +415,6 @@ public class ForecastFragment extends Fragment {
         protected void onPostExecute(String[] result) {
             if (result != null) {
                 ListPopulater();
-
-// Setup cursor adapter using cursor from last step
-
-                // New data is back from the server.  Hooray!
             }
             mSwipeRefreshLayout.setRefreshing(false);
             if (!CheckConnect){
