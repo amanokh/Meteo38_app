@@ -11,4 +11,9 @@
     <string name="units_c_label">градусы Цельсия</string>
     <string name="action_map">Показать на карте</string>
     <string name="action_share">Поделиться</string>
+    <string name="title_near_dist">Ближайшая точка (%s):</string>
+    <string name="units_km">км</string>
+    <string name="units_meters">м</string>
+    <string name="elem_near_dist">%s от Вас</string>
+    <string name="title_allst">Все станции</string>
 </resources>

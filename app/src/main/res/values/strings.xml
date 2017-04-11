@@ -19,8 +19,13 @@
     <string name="action_map">Show on map</string>
     <string name="action_share">Share</string>
     <string name="api_url" translatable="false">http://angara.net/meteo/old-ws/st</string>
+    <string name="title_near_dist">Nearest station (%s):</string>
+    <string name="units_km">km</string>
+    <string name="units_meters">m</string>
+    <string name="elem_near_dist">%s from you</string>
+    <string name="title_allst">All stations</string>
+
 
     <!-- TODO: Remove or change this placeholder text -->
-    <string name="hello_blank_fragment">Hello blank fragment</string>
 
 </resources>

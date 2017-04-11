@@ -8,27 +8,39 @@
     android:background="#3f51b5">
 
 
-    <TextView
-        android:text="726 мм.рт.ст \nСЗ 1 м/с \n86%"
-        android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:id="@+id/textView"
-        android:layout_width="120dp"
-        android:gravity="bottom|left"
+    <LinearLayout
+        android:layout_height="wrap_content"
         android:paddingBottom="16dp"
-        android:textColor="@color/primary_text_default_material_dark"
-        android:textSize="18dp" />
+        android:layout_width="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_toLeftOf="@+id/near_temp"
+        android:orientation="vertical">
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:id="@+id/near_dist"
+            android:text="Ближайшая точка:"
+            android:textColor="@color/primary_text_default_material_dark"
+            android:textSize="12dp" />
+        <TextView
+            android:layout_height="match_parent"
+            android:layout_width="match_parent"
+            android:id="@+id/near_details"
+            android:text=""
+            android:textColor="@color/primary_text_default_material_dark"
+            android:textSize="24dp" />
+    </LinearLayout>
     <TextView
-        android:text="-18°"
-        android:layout_width="match_parent"
+        android:text="--°"
+        android:layout_width="wrap_content"
         android:layout_height="match_parent"
-        android:layout_weight="1"
-        android:id="@+id/textView2"
+        android:id="@+id/near_temp"
         android:textSize="96dp"
         android:textStyle="normal|bold"
         android:textColor="@color/primary_text_default_material_dark"
-        android:gravity="bottom|right"
-        android:fontFamily="sans-serif-condensed" />
+        android:fontFamily="sans-serif-condensed"
+        android:layout_alignParentRight="true"/>
 
-    
+
 </RelativeLayout>

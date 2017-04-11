@@ -52,7 +52,7 @@ import java.util.List;
 import java.util.Vector;
 
 
-public class ForecastFragment extends Fragment {
+public class ForecastFragment extends Fragment {/*
     private SwipeRefreshLayout mSwipeRefreshLayout;
     public static String[] data = {
             "Click 'Refresh' button to get the wether forecast"
@@ -157,14 +157,14 @@ public class ForecastFragment extends Fragment {
         List<String> weekForecast = new ArrayList<String>(Arrays.asList(ForecastFragment.data));
         listView = (ListView) rootView.findViewById(R.id.listview_forecast);
 
-        /*listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> adapterView, View view, int i, long l){
                 String text = mForecastAdapter.getItem(i);
                 Intent intent = new Intent(getActivity(), DetailActivity.class).putExtra(Intent.EXTRA_TEXT, text);
                 startActivity(intent);
             }
-        });*/
+        });
         View header = getActivity().getLayoutInflater().inflate(R.layout.fragment_today, listView, false);
         listView.addHeaderView(header);
         TextView tv1 = (TextView)rootView.findViewById(R.id.textView2);
@@ -422,5 +422,5 @@ public class ForecastFragment extends Fragment {
             }
         }
 
-    }
+    }*/
 }

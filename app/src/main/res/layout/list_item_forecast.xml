@@ -54,7 +54,6 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom"
             android:fontFamily="sans-serif-condensed"
-            android:text="C"
             android:textAppearance="?android:textAppearanceSmall"
             android:paddingBottom="6dp"
             android:textColor="@android:color/black"/>

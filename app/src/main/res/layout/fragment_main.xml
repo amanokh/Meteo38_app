@@ -3,7 +3,80 @@
     xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
     android:layout_height="match_parent"
     tools:context=".ForecastFragment">
+    <LinearLayout
+        android:layout_height="match_parent"
+        android:layout_width="match_parent"
+        android:orientation="vertical">
+    <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        xmlns:tools="http://schemas.android.com/tools"
+        android:layout_width="match_parent"
+        android:layout_height="108dp"
+        android:paddingLeft="16dp"
+        android:paddingRight="8dp"
+        android:background="#3f51b5"
+        android:elevation="8dp">
 
+
+        <LinearLayout
+            android:layout_height="wrap_content"
+            android:paddingBottom="16dp"
+            android:layout_width="wrap_content"
+            android:layout_alignParentBottom="true"
+            android:layout_alignParentLeft="true"
+            android:layout_toLeftOf="@+id/near_temp"
+            android:orientation="vertical">
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:id="@+id/near_dist"
+                android:text="Ближайшая точка:"
+                android:textColor="@color/primary_text_default_material_dark"
+                android:textSize="12dp" />
+            <TextView
+                android:layout_height="match_parent"
+                android:layout_width="match_parent"
+                android:id="@+id/near_details"
+                android:text=""
+                android:textColor="@color/primary_text_default_material_dark"
+                android:textSize="28dp" />
+        </LinearLayout>
+        <TextView
+            android:text="--°"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:id="@+id/near_temp"
+            android:textSize="96dp"
+            android:textStyle="normal|bold"
+            android:textColor="@color/primary_text_default_material_dark"
+            android:fontFamily="sans-serif-condensed"
+            android:layout_alignParentRight="true"/>
+
+    </RelativeLayout>
+    <RelativeLayout
+        xmlns:android="http://schemas.android.com/apk/res/android"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="#ffeeeeee"
+        android:elevation="4dp"
+        android:orientation="horizontal">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentLeft="true"
+            android:text="@string/title_allst"
+            android:layout_marginLeft="16dp"
+            android:layout_marginTop="16dp"
+            android:id="@+id/title_allst"/>
+        <ImageButton
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_marginRight="8dp"
+            android:layout_marginTop="8dp"
+            android:layout_alignParentRight="true"
+            android:src="@drawable/ic_swap"
+            style="?android:attr/borderlessButtonStyle"
+            android:id="@+id/sort_button" />
+    </RelativeLayout>
     <android.support.v4.widget.SwipeRefreshLayout
         xmlns:android="http://schemas.android.com/apk/res/android"
             android:id="@+id/swipe_container"
@@ -13,7 +86,8 @@
             android:id="@+id/listview_forecast"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
-</android.support.v4.widget.SwipeRefreshLayout>
+    </android.support.v4.widget.SwipeRefreshLayout>
+    </LinearLayout>
 
 </FrameLayout>
 

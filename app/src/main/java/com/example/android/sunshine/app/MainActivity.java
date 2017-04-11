@@ -6,6 +6,7 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.graphics.Typeface;
+import android.location.Location;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.preference.PreferenceManager;
@@ -44,36 +45,63 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.Vector;
+import java.util.logging.Handler;
 
 
 public class MainActivity extends ActionBarActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener{
 
-    public static GoogleApiClient mGoogleApiClient;
-    public static android.location.Location mLastLocation;
+    private GoogleApiClient mGoogleApiClient;
+    private Location mLastLocation;
     private SwipeRefreshLayout mSwipeRefreshLayout;
     private boolean CheckConnect;
-    WeatherDbHelper dbHelper;
+    private boolean LocationNull;
+    private WeatherDbHelper dbHelper;
     private WeatherDb mDbAdapter;
     private Cursor mCursor;
+    private Cursor mCursorLocation;
     private SimpleCursorAdapter mCursorAd;
-    ListView listView;
+    private ListView listView;
 
     private void WeatherExecuter() {
+        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
+                mGoogleApiClient);
+        mSwipeRefreshLayout.setRefreshing(true);
         FetchWeatherTask weatherTask = new FetchWeatherTask();
         weatherTask.execute();
     }
     private void ListPopulater(){
 
         mDbAdapter = new WeatherDb(this);
-        mCursor = mDbAdapter.getAllItems();
+        mCursor = mDbAdapter.getByLocation();
 
 
-        String[] from = new String[] { WeatherContract.WeatherEntry.COLUMN_TITLE, WeatherContract.WeatherEntry.COLUMN_TEMP, WeatherContract.WeatherEntry.COLUMN_ADDRESS};
+        String[] from = new String[] { WeatherContract.WeatherEntry.COLUMN_TITLE, WeatherContract.WeatherEntry.COLUMN_TEMP, WeatherContract.WeatherEntry.COLUMN_DISTANCE_STR};
         int[] to = new int[] { R.id.list_item_title_textview, R.id.list_item_forecast_temp, R.id.list_item_addr_textview};
 
         mCursorAd = new SimpleCursorAdapter(this, R.layout.list_item_forecast, mCursor, from, to, 0);
         listView.setAdapter(mCursorAd);
+
+        mCursorLocation = mDbAdapter.getByLocation();
+        if (mCursorLocation.moveToNext()) {
+            int titleColIndex = mCursorLocation.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TITLE);
+            int tempColIndex = mCursorLocation.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TEMP);
+            int distColIndex = mCursorLocation.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_DISTANCE);
+
+            String near_title = mCursorLocation.getString(titleColIndex);
+            String near_temp = formatTemp(mCursorLocation.getDouble(tempColIndex));
+            double near_dist = mCursorLocation.getDouble(distColIndex);
+
+            TextView details_tv = (TextView)findViewById(R.id.near_details);
+            TextView temp_tv = (TextView)findViewById(R.id.near_temp);
+            TextView dist_tv = (TextView)findViewById(R.id.near_dist);
+
+            details_tv.setText(near_title);
+            temp_tv.setText(near_temp);
+            dist_tv.setText(String.format(getString(R.string.title_near_dist), formatNearDist(near_dist)));
+        }
         mDbAdapter.close();
     }
 
@@ -88,7 +116,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
             startActivity(intent);
         }
     }
-    private ArrayAdapter<String> mForecastAdapter;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -99,7 +127,6 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener(){
             @Override
             public void onRefresh() {
-                mSwipeRefreshLayout.setRefreshing(true);
                 WeatherExecuter();
             }});
 
@@ -110,16 +137,11 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
                 android.R.color.holo_red_light);
 
         listView = (ListView) findViewById(R.id.listview_forecast);
-
-        View header = this.getLayoutInflater().inflate(R.layout.fragment_today, listView, false);
-        listView.addHeaderView(header);
-        TextView tv1 = (TextView)findViewById(R.id.textView2);
+        View footer = getLayoutInflater().inflate(R.layout.footer_link, null);
+        listView.addFooterView(footer);
+        TextView tv1 = (TextView)findViewById(R.id.near_temp);
         Typeface header_font = Typeface.createFromAsset(this.getAssets(), "fonts/plm85c.ttf");
         tv1.setTypeface(header_font);
-        TextView banner_text = (TextView) findViewById(R.id.textView);
-        WeatherExecuter();
-        ListPopulater();
-
 
         getSupportActionBar().setElevation(0);
         if (mGoogleApiClient == null) {
@@ -129,22 +151,52 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
                     .addApi(LocationServices.API)
                     .build();
         }
+
+        ListPopulater();
     }
 
-    public void getThisLocation(){
-        mGoogleApiClient.connect();
+    public void forceGetLocation(){
+        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
+                mGoogleApiClient);
+    }
+    private String formatTemp(double temp) {
+        // For presentation, assume the user doesn't care about tenths of a degree.
+        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
+        String units = sharedPref.getString(getString(R.string.units_key), getString(R.string.units_default));
+        if (units.equals(getString(R.string.units_f))){
+            temp = (temp*1.8)+32;
+        }
+        long roundedTemp = Math.round(temp);
 
+        String tempStr;
+        if (roundedTemp>0){
+            tempStr = "+" + roundedTemp + "°";
+        } else {
+            tempStr = roundedTemp + "°";
+        }
+
+        return tempStr;
+    }
+    private String formatNearDist(double dist) {
+        int distInt;
+        if (dist<1000) {
+            distInt = (int) Math.round(dist-(dist%100));
+            return String.format("%1$d %2$s", distInt, getString(R.string.units_meters));
+        }
+        else {
+            return String.format("%1$.1f %2$s", dist/1000.0, getString(R.string.units_km));
+        }
     }
 
     public void onStart(){
         mGoogleApiClient.connect();
+        ListPopulater();
         super.onStart();
     }
     public void onStop(){
         mGoogleApiClient.disconnect();
         super.onStop();
     }
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -165,6 +217,10 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
             startActivity(new Intent(this, SettingsActivity.class));
             return true;
         }
+        if (id == R.id.action_refresh) {
+            WeatherExecuter();
+            return true;
+        }
 
         return super.onOptionsItemSelected(item);
     }
@@ -173,29 +229,6 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
     public class FetchWeatherTask extends AsyncTask<Void, Void, String[]> {
 
         private final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
-
-        private String formatTemp(double temp) {
-            // For presentation, assume the user doesn't care about tenths of a degree.
-            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-            String units = sharedPref.getString(getString(R.string.units_key), getString(R.string.units_default));
-            if (units.equals(getString(R.string.units_f))){
-                temp = (temp*1.8)+32;
-            } else if (!units.equals(getString(R.string.units_c))){
-                Log.d(LOG_TAG, "units not found " + units);
-            }
-            long roundedTemp = Math.round(temp);
-
-            String tempStr;
-            if (roundedTemp>0){
-                tempStr = "+" + roundedTemp + "°";
-            } else {
-                tempStr = roundedTemp + "°";
-            }
-
-            return tempStr;
-        }
-
-
 
         private void getWeatherDataFromJson38(String forecastJsonStr)
                 throws JSONException {
@@ -237,6 +270,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
                     double c_lat;
                     double c_lon;
                     double dist;
+
                     JSONObject station = stationsArray.getJSONObject(i);
                     JSONObject weatherObject = station.getJSONObject(M38_info);
                     JSONArray locationArray = station.getJSONArray(M38_coord);
@@ -248,8 +282,19 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
                     title = station.getString(M38_title);
                     pid = station.getString(M38_id);
 
+                    Location c_loc = new Location("");
                     c_lat = locationArray.getDouble(1);
                     c_lon = locationArray.getDouble(0);
+                    c_loc.setLatitude(c_lat);
+                    c_loc.setLongitude(c_lon);
+                    Log.d(LOG_TAG, title+c_lat+c_lon);
+                    if (mLastLocation!=null) {
+
+                        dist = mLastLocation.distanceTo(c_loc);
+                    }
+                    else {
+                        dist=0;
+                    }
                     try {
                         pressure = weatherObject.getDouble(M38_pres);
                     } catch (JSONException e) {
@@ -283,6 +328,8 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
                         weatherValues.put(WeatherContract.WeatherEntry.COLUMN_TEMP, formatTemp(temp));
                         weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LATITUDE, c_lat);
                         weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LONGITUDE, c_lon);
+                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DISTANCE, dist);
+                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DISTANCE_STR, String.format(getString(R.string.elem_near_dist), formatNearDist(dist)));
 
                         cVVector.add(weatherValues);
                         long rowID = db.insert(WeatherContract.WeatherEntry.TABLE_NAME, null, weatherValues);
@@ -421,12 +468,23 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
     @Override
     public void onConnected(Bundle bundle) {
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
-                mGoogleApiClient);
+        Location LastLocation = new Location(LocationServices.FusedLocationApi.getLastLocation(
+                mGoogleApiClient));
+        if (LastLocation!=null){
+            mLastLocation = LastLocation;
+            LocationNull = false;
+        }
+        else {
+            LocationNull = true;
+            Toast.makeText(getApplicationContext(), "location null", Toast.LENGTH_SHORT).show();
+        }
+        //Toast.makeText(getApplicationContext(), String.valueOf(mLastLocation.getLongitude())+" "+String.valueOf(mLastLocation.getLatitude()), Toast.LENGTH_SHORT).show();
+        WeatherExecuter();
     }
 
     @Override
     public void onConnectionSuspended(int i) {
+        Toast.makeText(getApplicationContext(), "suspended", Toast.LENGTH_SHORT).show();
 
     }
 

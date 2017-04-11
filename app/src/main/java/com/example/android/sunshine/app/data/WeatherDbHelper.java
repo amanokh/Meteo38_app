@@ -28,7 +28,7 @@ import com.example.android.sunshine.app.data.WeatherContract.WeatherEntry;
 public class WeatherDbHelper extends SQLiteOpenHelper {
 
     // If you change the database schema, you must increment the database version.
-    private static final int DATABASE_VERSION = 2;
+    private static final int DATABASE_VERSION = 3;
 
     static final String DATABASE_NAME = "weather.db";
 
@@ -58,6 +58,8 @@ public class WeatherDbHelper extends SQLiteOpenHelper {
                 WeatherEntry.COLUMN_PRESSURE + " REAL NOT NULL, " +
                 WeatherEntry.COLUMN_WIND_SPEED + " REAL NOT NULL, " +
                 WeatherEntry.COLUMN_DEGREES + " REAL NOT NULL, " +
+                WeatherEntry.COLUMN_DISTANCE + " REAL NOT NULL, " +
+                WeatherEntry.COLUMN_DISTANCE_STR + " TEXT NOT NULL, " +
                 WeatherEntry.COLUMN_LATITUDE + " REAL NOT NULL, " +
                 WeatherEntry.COLUMN_LONGITUDE + " REAL NOT NULL" +
                 ");";

@@ -79,6 +79,8 @@ public class WeatherContract {
         public static final String COLUMN_DEGREES = "degrees";
         public static final String COLUMN_LATITUDE = "lat";
         public static final String COLUMN_LONGITUDE = "long";
+        public static final String COLUMN_DISTANCE = "dist";
+        public static final String COLUMN_DISTANCE_STR = "diststr";
         public static Uri buildWeatherUri(long id) {
             return ContentUris.withAppendedId(CONTENT_URI, id);
         }

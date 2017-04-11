@@ -13,7 +13,11 @@ public class WeatherDb {
         mDbHelper = new WeatherDbHelper(context);
     }
 
-    public Cursor getAllItems() {
+    public Cursor getByLocation() {
+        mDb = mDbHelper.getReadableDatabase();
+        return mDb.query(WeatherContract.WeatherEntry.TABLE_NAME, null, null, null, null, null, WeatherContract.WeatherEntry.COLUMN_DISTANCE);
+    }
+    public Cursor getByName() {
         mDb = mDbHelper.getReadableDatabase();
         return mDb.query(WeatherContract.WeatherEntry.TABLE_NAME, null, null, null, null, null, WeatherContract.WeatherEntry.COLUMN_TITLE);
     }
