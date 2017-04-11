@@ -456,7 +456,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         protected void onPostExecute(String[] result) {
             mCursorAd.notifyDataSetChanged();
             ListPopulater();
-            Log.d(LOG_TAG, "data Changed ");
+            Log.d(LOG_TAG, "data Changed");
 
             mSwipeRefreshLayout.setRefreshing(false);
             if (!CheckConnect){
