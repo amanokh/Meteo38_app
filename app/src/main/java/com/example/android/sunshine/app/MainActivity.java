@@ -91,7 +91,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
             int distColIndex = mCursorLocation.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_DISTANCE);
 
             String near_title = mCursorLocation.getString(titleColIndex);
-            String near_temp = formatTemp(mCursorLocation.getDouble(tempColIndex));
+            String near_temp = mCursorLocation.getString(tempColIndex);
             double near_dist = mCursorLocation.getDouble(distColIndex);
 
             TextView details_tv = (TextView)findViewById(R.id.near_details);
@@ -139,9 +139,9 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         listView = (ListView) findViewById(R.id.listview_forecast);
         View footer = getLayoutInflater().inflate(R.layout.footer_link, null);
         listView.addFooterView(footer);
-        TextView tv1 = (TextView)findViewById(R.id.near_temp);
-        Typeface header_font = Typeface.createFromAsset(this.getAssets(), "fonts/plm85c.ttf");
-        tv1.setTypeface(header_font);
+        //TextView tv1 = (TextView)findViewById(R.id.near_temp);
+        //Typeface header_font = Typeface.createFromAsset(this.getAssets(), "fonts/plm85c.ttf");
+        //tv1.setTypeface(header_font);
 
         getSupportActionBar().setElevation(0);
         if (mGoogleApiClient == null) {
