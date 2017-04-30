@@ -1,6 +1,7 @@
 package com.example.android.sunshine.app;
 
 import android.content.ContentValues;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -14,6 +15,7 @@ import android.support.v4.widget.SimpleCursorAdapter;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -25,6 +27,7 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.example.android.sunshine.app.data.LocationRequest;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.data.WeatherDb;
 import com.example.android.sunshine.app.data.WeatherDbHelper;
@@ -51,26 +54,82 @@ import java.util.Vector;
 import java.util.logging.Handler;
 
 
-public class MainActivity extends ActionBarActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener{
+public class MainActivity extends AppCompatActivity{
 
     private GoogleApiClient mGoogleApiClient;
     private Location mLastLocation;
     private SwipeRefreshLayout mSwipeRefreshLayout;
     private boolean CheckConnect;
-    private boolean LocationNull;
+    public boolean LocationNull;
+    public boolean PermissionNull;
     private WeatherDbHelper dbHelper;
     private WeatherDb mDbAdapter;
     private Cursor mCursor;
     private Cursor mCursorLocation;
     private SimpleCursorAdapter mCursorAd;
     private ListView listView;
+    public Timer mTimer;
 
-    private void WeatherExecuter() {
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
-                mGoogleApiClient);
-        mSwipeRefreshLayout.setRefreshing(true);
+
+    private void WeatherExecuter(Location location) {
         FetchWeatherTask weatherTask = new FetchWeatherTask();
-        weatherTask.execute();
+        weatherTask.execute(location);
+    }
+    private void LocationGet(Context context) {
+        LocationRequest.requestSingleUpdate(context, findViewById(R.id.snackbarPosition),
+                new LocationRequest.LocationCallback() {
+                    @Override
+                    public void onNewLocationAvailable(Location location) {
+                        if (mTimer != null) {
+                            mTimer.cancel();
+                        }
+                        Log.d("Location", "my location is " + location.toString());
+                        SharedPreferences sharedPref = getApplicationContext().getSharedPreferences("mypref", Context.MODE_PRIVATE);
+                        SharedPreferences.Editor editor = sharedPref.edit();
+
+                        editor.putString("LOC_LAT", String.valueOf(location.getLatitude())).apply();
+                        editor.putString("LOC_LONG", String.valueOf(location.getLongitude())).apply();
+                        WeatherExecuter(location);
+                        LocationNull=false;
+                    }
+                });
+    }
+    private void Updater() {
+        mSwipeRefreshLayout.setRefreshing(true);
+        LocationNull=true;
+        LocationGet(getApplicationContext());
+        mTimer = new Timer();
+        TimerTask mTimerTask = new TimerTask() {
+        public void run() {
+            runOnUiThread(new Runnable() {
+
+                @Override
+                public void run() {
+                    if (LocationNull) {
+                        SharedPreferences sharedPref = getApplicationContext().getSharedPreferences("mypref", Context.MODE_PRIVATE);
+                        Location oldLocation = new Location("");
+                        String lat = sharedPref.getString("LOC_LAT", "0");
+                        Log.d("Updater", "location"+ lat);
+                        String lon = sharedPref.getString("LOC_LONG", "0");
+                        Log.d("Updater", "location"+ lon);
+                        oldLocation.setLatitude(Double.parseDouble(lat));
+                        oldLocation.setLongitude(Double.parseDouble(lon));
+
+                        Location checkLoc = new Location("");
+                        checkLoc.setLatitude(0);
+                        checkLoc.setLongitude(0);
+
+                        if (!oldLocation.equals(checkLoc)){
+                            WeatherExecuter(oldLocation);
+                        } else {
+                            WeatherExecuter(checkLoc);
+                        }
+                        Log.d("Updater", "location didnt get");
+                    }
+                }
+            });
+        }};
+        mTimer.schedule(mTimerTask, 6000);
     }
     private void ListPopulater(){
 
@@ -85,7 +144,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         listView.setAdapter(mCursorAd);
 
         mCursorLocation = mDbAdapter.getByLocation();
-        if (mCursorLocation.moveToNext()) {
+        if (mCursorLocation.moveToFirst()) {
             int titleColIndex = mCursorLocation.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TITLE);
             int tempColIndex = mCursorLocation.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TEMP);
             int distColIndex = mCursorLocation.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_DISTANCE);
@@ -100,7 +159,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
 
             details_tv.setText(near_title);
             temp_tv.setText(near_temp);
-            dist_tv.setText(String.format(getString(R.string.title_near_dist), formatNearDist(near_dist)));
+            dist_tv.setText(String.format(getString(R.string.title_near_dist), Utils.formatNearDist(near_dist, getString(R.string.units_meters), getString(R.string.units_km))));
         }
         mDbAdapter.close();
     }
@@ -127,7 +186,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener(){
             @Override
             public void onRefresh() {
-                WeatherExecuter();
+                Updater();
             }});
 
 
@@ -144,57 +203,16 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         //tv1.setTypeface(header_font);
 
         getSupportActionBar().setElevation(0);
-        if (mGoogleApiClient == null) {
-            mGoogleApiClient = new GoogleApiClient.Builder(this)
-                    .addConnectionCallbacks(this)
-                    .addOnConnectionFailedListener(this)
-                    .addApi(LocationServices.API)
-                    .build();
-        }
-
         ListPopulater();
     }
 
-    public void forceGetLocation(){
-        mLastLocation = LocationServices.FusedLocationApi.getLastLocation(
-                mGoogleApiClient);
-    }
-    private String formatTemp(double temp) {
-        // For presentation, assume the user doesn't care about tenths of a degree.
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getApplicationContext());
-        String units = sharedPref.getString(getString(R.string.units_key), getString(R.string.units_default));
-        if (units.equals(getString(R.string.units_f))){
-            temp = (temp*1.8)+32;
-        }
-        long roundedTemp = Math.round(temp);
 
-        String tempStr;
-        if (roundedTemp>0){
-            tempStr = "+" + roundedTemp + "°";
-        } else {
-            tempStr = roundedTemp + "°";
-        }
 
-        return tempStr;
-    }
-    private String formatNearDist(double dist) {
-        int distInt;
-        if (dist<1000) {
-            distInt = (int) Math.round(dist-(dist%100));
-            return String.format("%1$d %2$s", distInt, getString(R.string.units_meters));
-        }
-        else {
-            return String.format("%1$.1f %2$s", dist/1000.0, getString(R.string.units_km));
-        }
-    }
 
     public void onStart(){
-        mGoogleApiClient.connect();
-        ListPopulater();
         super.onStart();
     }
     public void onStop(){
-        mGoogleApiClient.disconnect();
         super.onStop();
     }
     @Override
@@ -218,169 +236,162 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
             return true;
         }
         if (id == R.id.action_refresh) {
-            WeatherExecuter();
+            Updater();
             return true;
         }
 
         return super.onOptionsItemSelected(item);
     }
+    private void getWeatherDataFromJson38(String forecastJsonStr, Location location)
+            throws JSONException {
+
+        final String LOG_TAG = "getDataFromJson";
+
+        final String M38_id = "_id";
+        final String M38_title = "title";
+        final String M38_coord = "ll";
+        final String M38_info = "last";
+        final String M38_temp = "t";
+        final String M38_wspeed = "w";
+        final String M38_wdeg = "b";
+        final String M38_pres = "p";
+        final String M38_addr = "addr";
 
 
-    public class FetchWeatherTask extends AsyncTask<Void, Void, String[]> {
+        JSONArray stationsArray = new JSONArray(forecastJsonStr);
 
-        private final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
+        try {
+            SQLiteDatabase db = dbHelper.getWritableDatabase();
+            Vector<ContentValues> cVVector = new Vector<ContentValues>(stationsArray.length());
 
-        private void getWeatherDataFromJson38(String forecastJsonStr)
-                throws JSONException {
+            int clearCount = db.delete(WeatherContract.WeatherEntry.TABLE_NAME, null, null);
+            db.execSQL(String.format("UPDATE SQLITE_SEQUENCE SET seq = 0 WHERE name = '%1$s';", WeatherContract.WeatherEntry.TABLE_NAME));
+            Log.d(LOG_TAG, "--- Clear mytable: ---");
+            Log.d(LOG_TAG, String.valueOf(clearCount));
+            for (int i = 0; i < stationsArray.length(); i++) {
 
-            // These are the names of the JSON objects that need to be extracted.
-            final String M38_id = "_id";
-            final String M38_title = "title";
-            final String M38_coord = "ll";
-            final String M38_info = "last";
-            final String M38_temp = "t";
-            final String M38_wspeed = "w";
-            final String M38_wdeg = "b";
-            final String M38_pres = "p";
-            final String M38_addr = "addr";
+                double pressure;
+                double windSpeed;
+                double windDirection;
+                double temp;
 
+                String title;
+                String pid;
+                String address;
 
-            JSONArray stationsArray = new JSONArray(forecastJsonStr);
-            List<String> st_without = new ArrayList<String>();
-            String[] resultStrs = new String[st_without.size()];
-            try {
-                SQLiteDatabase db = dbHelper.getWritableDatabase();
-                Vector<ContentValues> cVVector = new Vector<ContentValues>(stationsArray.length());
+                double c_lat;
+                double c_lon;
+                double dist;
 
-                int clearCount = db.delete(WeatherContract.WeatherEntry.TABLE_NAME, null, null);
-                db.execSQL(String.format("UPDATE SQLITE_SEQUENCE SET seq = 0 WHERE name = '%1$s';", WeatherContract.WeatherEntry.TABLE_NAME));
-                Log.d(LOG_TAG, "--- Clear mytable: ---");
-                Log.d(LOG_TAG, String.valueOf(clearCount));
-                for (int i = 0; i < stationsArray.length(); i++) {
+                JSONObject station = stationsArray.getJSONObject(i);
+                JSONObject weatherObject = station.getJSONObject(M38_info);
+                JSONArray locationArray = station.getJSONArray(M38_coord);
 
-                    double pressure;
-                    double windSpeed;
-                    double windDirection;
-                    double temp;
+                title = station.getString(M38_title);
+                pid = station.getString(M38_id);
 
-                    String title;
-                    String pid;
-                    String address;
+                Location c_loc = new Location("");
+                c_lat = locationArray.getDouble(1);
+                c_lon = locationArray.getDouble(0);
+                c_loc.setLatitude(c_lat);
+                c_loc.setLongitude(c_lon);
+                /*if (mLastLocation!=null) {
 
-                    double c_lat;
-                    double c_lon;
-                    double dist;
-
-                    JSONObject station = stationsArray.getJSONObject(i);
-                    JSONObject weatherObject = station.getJSONObject(M38_info);
-                    JSONArray locationArray = station.getJSONArray(M38_coord);
-                    try {
-                        temp = weatherObject.getDouble(M38_temp);
-                    } catch (JSONException e) {
-                        temp = -1;
-                    }
-                    title = station.getString(M38_title);
-                    pid = station.getString(M38_id);
-
-                    Location c_loc = new Location("");
-                    c_lat = locationArray.getDouble(1);
-                    c_lon = locationArray.getDouble(0);
-                    c_loc.setLatitude(c_lat);
-                    c_loc.setLongitude(c_lon);
-                    Log.d(LOG_TAG, title+c_lat+c_lon);
-                    if (mLastLocation!=null) {
-
-                        dist = mLastLocation.distanceTo(c_loc);
-                    }
-                    else {
-                        dist=0;
-                    }
-                    try {
-                        pressure = weatherObject.getDouble(M38_pres);
-                    } catch (JSONException e) {
-                        pressure = -1;
-                    }
-                    try {
-                        windSpeed = weatherObject.getDouble(M38_wspeed);
-                    } catch (JSONException e) {
-                        windSpeed = -1;
-                    }
-                    try {
-                        windDirection = weatherObject.getDouble(M38_wdeg);
-                    } catch (JSONException e) {
-                        windDirection = -1;
-                    }
-                    try {
-                        address = station.getString(M38_addr);
-                    } catch (JSONException e) {
-                        address = "none";
-                    }
-
-                    if (!title.substring(0, 2).equals("Р-") & !title.substring(0, 2).equals("А-")) {
-                        ContentValues weatherValues = new ContentValues();
-
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_TITLE, title);
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_STATION_ID, pid);
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_ADDRESS, address);
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_PRESSURE, pressure);
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WIND_SPEED, windSpeed);
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DEGREES, windDirection);
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_TEMP, formatTemp(temp));
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LATITUDE, c_lat);
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LONGITUDE, c_lon);
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DISTANCE, dist);
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DISTANCE_STR, String.format(getString(R.string.elem_near_dist), formatNearDist(dist)));
-
-                        cVVector.add(weatherValues);
-                        long rowID = db.insert(WeatherContract.WeatherEntry.TABLE_NAME, null, weatherValues);
-                    }
+                    dist = mLastLocation.distanceTo(c_loc);
                 }
-                if ( cVVector.size() > 0 ) {
-                    ContentValues[] cvArray = new ContentValues[cVVector.size()];
-                    cVVector.toArray(cvArray);
-
-                    // удаляем все записи
-
-
-                    Cursor c = db.query(WeatherContract.WeatherEntry.TABLE_NAME, null, null, null, null, null, null);
-
-
-                    // ставим позицию курсора на первую строку выборки
-                    // если в выборке нет строк, вернется false
-                    if (c.moveToFirst()) {
-
-                        // определяем номера столбцов по имени в выборке
-                        int idColIndex = c.getColumnIndex(WeatherContract.WeatherEntry._ID);
-                        int nameColIndex = c.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TITLE);
-                        int emailColIndex = c.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TEMP);
-
-                        do {
-                            // получаем значения по номерам столбцов и пишем все в лог
-                            Log.d(LOG_TAG,
-                                    "ID = " + c.getInt(idColIndex) +
-                                            ", name = " + c.getString(nameColIndex) +
-                                            ", temp = " + c.getString(emailColIndex));
-                            // переход на следующую строку
-                            // а если следующей нет (текущая - последняя), то false - выходим из цикла
-                        } while (c.moveToNext());
-                    } else
-                        Log.d(LOG_TAG, "0 rows");
-                    c.close();
+                else {
+                    dist=0;
+                }*/
+                dist=location.distanceTo(c_loc);
+                try {
+                    temp = weatherObject.getDouble(M38_temp);
+                } catch (JSONException e) {
+                    temp = -273;
+                }
+                try {
+                    pressure = weatherObject.getDouble(M38_pres);
+                } catch (JSONException e) {
+                    pressure = -1;
+                }
+                try {
+                    windSpeed = weatherObject.getDouble(M38_wspeed);
+                } catch (JSONException e) {
+                    windSpeed = -1;
+                }
+                try {
+                    windDirection = weatherObject.getDouble(M38_wdeg);
+                } catch (JSONException e) {
+                    windDirection = -1;
+                }
+                try {
+                    address = station.getString(M38_addr);
+                } catch (JSONException e) {
+                    address = "none";
                 }
 
-            } catch (JSONException e) {
-                Log.e(LOG_TAG, e.getMessage(), e);
-                e.printStackTrace();
-            }
+                if (!title.substring(0, 2).equals("Р-") & !title.substring(0, 2).equals("А-") & !title.equals(-273)) {
+                    ContentValues weatherValues = new ContentValues();
+
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_TITLE, title);
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_STATION_ID, pid);
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_ADDRESS, address);
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_PRESSURE, pressure);
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WIND_SPEED, windSpeed);
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DEGREES, windDirection);
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_TEMP, Utils.formatTemp(getApplicationContext(), temp));
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LATITUDE, c_lat);
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LONGITUDE, c_lon);
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DISTANCE, dist);
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DISTANCE_STR, String.format(getString(R.string.elem_near_dist), Utils.formatNearDist(dist, getString(R.string.units_meters), getString(R.string.units_km))));
+
+                    cVVector.add(weatherValues);
+                    long rowID = db.insert(WeatherContract.WeatherEntry.TABLE_NAME, null, weatherValues);
+                }
+            }/*
+            if ( cVVector.size() > 0 ) {
+                ContentValues[] cvArray = new ContentValues[cVVector.size()];
+                cVVector.toArray(cvArray);
+
+                // удаляем все записи
 
 
-            for (String s : resultStrs) {
-                Log.v(LOG_TAG, "Forecast entry: " + s);
-            }
+                Cursor c = db.query(WeatherContract.WeatherEntry.TABLE_NAME, null, null, null, null, null, null);
+
+
+                // ставим позицию курсора на первую строку выборки
+                // если в выборке нет строк, вернется false
+                if (c.moveToFirst()) {
+
+                    // определяем номера столбцов по имени в выборке
+                    int idColIndex = c.getColumnIndex(WeatherContract.WeatherEntry._ID);
+                    int nameColIndex = c.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TITLE);
+                    int emailColIndex = c.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TEMP);
+
+                    do {
+                        // получаем значения по номерам столбцов и пишем все в лог
+                        Log.d(LOG_TAG,
+                                "ID = " + c.getInt(idColIndex) +
+                                        ", name = " + c.getString(nameColIndex) +
+                                        ", temp = " + c.getString(emailColIndex));
+                        // переход на следующую строку
+                        // а если следующей нет (текущая - последняя), то false - выходим из цикла
+                    } while (c.moveToNext());
+                } else
+                    Log.d(LOG_TAG, "0 rows");
+                c.close();
+            }*/
+
+        } catch (JSONException e) {
+            Log.e(LOG_TAG, e.getMessage(), e);
+            e.printStackTrace();
         }
-        @Override
-        protected String[] doInBackground(Void... params) {
+    }
 
+
+    public class FetchWeatherTask extends AsyncTask<Location, Void, String[]> {
+        @Override
+        protected String[] doInBackground(Location... loc) {
+            final String LOG_TAG = "doInBackground_st_data";
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
             HttpURLConnection urlConnection = null;
@@ -389,40 +400,29 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
             // Will contain the raw JSON response as a string.
             String weatherJsonStr = null;
             try {
-
-
                 URL url = new URL("http://angara.net/meteo/old-ws/st");
 
-                // Create the request to OpenWeatherMap, and open the connection
                 urlConnection = (HttpURLConnection) url.openConnection();
                 urlConnection.setRequestMethod("GET");
                 urlConnection.connect();
 
-                // Read the input stream into a String
                 InputStream inputStream = urlConnection.getInputStream();
                 StringBuffer buffer = new StringBuffer();
                 if (inputStream == null) {
-                    // Nothing to do.
                     return null;
                 }
                 reader = new BufferedReader(new InputStreamReader(inputStream));
 
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    // Since it's JSON, adding a newline isn't necessary (it won't affect parsing)
-                    // But it does make debugging a *lot* easier if you print out the completed
-                    // buffer for debugging.
                     buffer.append(line + "\n");
                 }
 
                 if (buffer.length() == 0) {
-                    // Stream was empty.  No point in parsing.
                     return null;
                 }
                 weatherJsonStr = buffer.toString();
                 CheckConnect = true;
-
-                Log.v(LOG_TAG, "Forecast JSON: " + weatherJsonStr);
             } catch (IOException e) {
                 Log.e(LOG_TAG, "Error: conntection not established", e);
                 CheckConnect = false;
@@ -441,13 +441,11 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
             }
 
             try {
-                getWeatherDataFromJson38(weatherJsonStr);
+                getWeatherDataFromJson38(weatherJsonStr, loc[0]);
             } catch (JSONException e) {
                 Log.e(LOG_TAG, e.getMessage(), e);
                 e.printStackTrace();
             }
-
-            // This will only happen if there was an error getting or parsing the forecast.
             return null;
 
         }
@@ -456,7 +454,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         protected void onPostExecute(String[] result) {
             mCursorAd.notifyDataSetChanged();
             ListPopulater();
-            Log.d(LOG_TAG, "data Changed");
+            Log.d("onPostExecute_st_data", "data Changed");
 
             mSwipeRefreshLayout.setRefreshing(false);
             if (!CheckConnect){
@@ -465,31 +463,7 @@ public class MainActivity extends ActionBarActivity implements GoogleApiClient.C
         }
 
     }
+    //public class FetchStationsTask extends AsyncTask<Void,Void,Void>{}
 
-    @Override
-    public void onConnected(Bundle bundle) {
-        Location LastLocation = new Location(LocationServices.FusedLocationApi.getLastLocation(
-                mGoogleApiClient));
-        if (LastLocation!=null){
-            mLastLocation = LastLocation;
-            LocationNull = false;
-        }
-        else {
-            LocationNull = true;
-            Toast.makeText(getApplicationContext(), "location null", Toast.LENGTH_SHORT).show();
-        }
-        //Toast.makeText(getApplicationContext(), String.valueOf(mLastLocation.getLongitude())+" "+String.valueOf(mLastLocation.getLatitude()), Toast.LENGTH_SHORT).show();
-        WeatherExecuter();
-    }
 
-    @Override
-    public void onConnectionSuspended(int i) {
-        Toast.makeText(getApplicationContext(), "suspended", Toast.LENGTH_SHORT).show();
-
-    }
-
-    @Override
-    public void onConnectionFailed(ConnectionResult connectionResult) {
-
-    }
 }

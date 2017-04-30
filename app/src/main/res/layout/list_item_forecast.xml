@@ -26,7 +26,7 @@
             android:id="@+id/list_item_addr_textview"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="sans-serif"
+            android:fontFamily="sans-serif-medium"
             android:textAppearance="?android:textAppearanceSmall"
             android:text="АС Байкал ТВ"
             android:textColor="@color/secondary_text_default_material_light"/>

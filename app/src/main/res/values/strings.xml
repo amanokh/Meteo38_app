@@ -24,6 +24,10 @@
     <string name="units_meters">m</string>
     <string name="elem_near_dist">%s from you</string>
     <string name="title_allst">All stations</string>
+    <string name="location_off">Location services are disabled</string>
+    <string name="location_request">Allow app to get the location first</string>
+    <string name="location_settings">Permissions</string>
+    <string name="turn_on">Enable</string>
 
 
     <!-- TODO: Remove or change this placeholder text -->

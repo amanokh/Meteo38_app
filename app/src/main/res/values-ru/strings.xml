@@ -16,4 +16,8 @@
     <string name="units_meters">м</string>
     <string name="elem_near_dist">%s от Вас</string>
     <string name="title_allst">Все станции</string>
+    <string name="location_off">Службы геолокации выключены</string>
+    <string name="location_settings">Разрешения</string>
+    <string name="location_request">Разрешите приложению получать местоположение</string>
+    <string name="turn_on">Включить</string>
 </resources>
