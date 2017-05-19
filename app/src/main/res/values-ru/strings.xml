@@ -20,4 +20,6 @@
     <string name="location_settings">Разрешения</string>
     <string name="location_request">Разрешите приложению получать местоположение</string>
     <string name="turn_on">Включить</string>
+    <string name="units_ms">" м/с"</string>
+    <string name="lang">ru</string>
 </resources>

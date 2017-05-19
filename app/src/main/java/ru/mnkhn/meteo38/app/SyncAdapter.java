@@ -1,207 +1,11 @@
-package com.example.android.sunshine.app;
-
-import android.content.ContentValues;
-import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Typeface;
-import android.location.Criteria;
-import android.location.Location;
-import android.location.LocationManager;
-import android.net.Uri;
-import android.os.AsyncTask;
-import android.os.Bundle;
-import android.preference.PreferenceManager;
-import android.support.v4.app.Fragment;
-import android.support.v4.widget.SimpleCursorAdapter;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.util.Log;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
-import android.view.Menu;
-import android.view.MenuInflater;
-import android.view.MenuItem;
-import android.widget.TextView;
-import android.widget.Toast;
+package ru.mnkhn.meteo38.app;
 
 
-
-import com.example.android.sunshine.app.data.WeatherContract;
-import com.example.android.sunshine.app.data.WeatherDb;
-import com.example.android.sunshine.app.data.WeatherDbHelper;
-
-
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.net.HttpURLConnection;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Vector;
-
-
-public class ForecastFragment extends Fragment {/*
-    private SwipeRefreshLayout mSwipeRefreshLayout;
-    public static String[] data = {
-            "Click 'Refresh' button to get the wether forecast"
-    };
-    private boolean CheckConnect;
-    WeatherDbHelper dbHelper;
-    private WeatherDb mDbAdapter;
-    private Cursor mCursor;
-    private SimpleCursorAdapter mCursorAd;
-    ListView listView;
-
-    private void WeatherExecuter() {
-        FetchWeatherTask weatherTask = new FetchWeatherTask();
-        weatherTask.execute();
-    }
-
-    private void ListPopulater(){
-        mDbAdapter = new WeatherDb(getActivity().getApplicationContext());
-        mCursor = mDbAdapter.getAllItems();
-
-
-        String[] from = new String[] { WeatherContract.WeatherEntry.COLUMN_TITLE, WeatherContract.WeatherEntry.COLUMN_TEMP, WeatherContract.WeatherEntry.COLUMN_ADDRESS};
-        int[] to = new int[] { R.id.list_item_title_textview, R.id.list_item_forecast_temp, R.id.list_item_addr_textview};
-
-        mCursorAd = new SimpleCursorAdapter(getActivity().getApplicationContext(), R.layout.list_item_forecast, mCursor, from, to, 0);
-        listView.setAdapter(mCursorAd);
-        mDbAdapter.close();
-    }
-    public void onStart(){
-        ListPopulater();
-        WeatherExecuter();
-        super.onStart();
-    }
-    public void onStop(){
-        super.onStop();
-    }
-    private void showMap() { //button
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        String location = sharedPref.getString(getString(R.string.location_key), getString(R.string.location_default));
-        Uri geoUri = Uri.parse("geo:0,0?").buildUpon().appendQueryParameter("q", location).build();
-
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setData(geoUri);
-        if (intent.resolveActivity(getActivity().getPackageManager()) != null) {
-            startActivity(intent);
-        }
-    }
-    private ArrayAdapter<String> mForecastAdapter;
-
-
-    @Override
-    public void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        // Add this line in order for this fragment to handle menu events.
-        setHasOptionsMenu(true);
-        dbHelper = new WeatherDbHelper(getActivity().getApplicationContext());
-
-    }
-
-    @Override
-    public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
-        inflater.inflate(R.menu.refresh_button, menu);
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        // Handle action bar item clicks here. The action bar will
-        // automatically handle clicks on the Home/Up button, so long
-        // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
-        if (id == R.id.action_refresh) {
-            mSwipeRefreshLayout.setRefreshing(true);
-            WeatherExecuter();
-            return true;
-        }
-        if (id == R.id.action_map) {
-            showMap();
-            return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-        View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-                // Create some dummy data for the ListView.  Here's a sample weekly forecast
-        mSwipeRefreshLayout = (SwipeRefreshLayout) rootView.findViewById(R.id.swipe_container);
-        mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener(){
-            @Override
-            public void onRefresh() {
-                mSwipeRefreshLayout.setRefreshing(true);
-                WeatherExecuter();
-        }});
-
-
-        mSwipeRefreshLayout.setColorSchemeResources(android.R.color.holo_blue_bright,
-                android.R.color.holo_green_light,
-                android.R.color.holo_orange_light,
-                android.R.color.holo_red_light);
-
-        List<String> weekForecast = new ArrayList<String>(Arrays.asList(ForecastFragment.data));
-        listView = (ListView) rootView.findViewById(R.id.listview_forecast);
-
-        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-            @Override
-            public void onItemClick(AdapterView<?> adapterView, View view, int i, long l){
-                String text = mForecastAdapter.getItem(i);
-                Intent intent = new Intent(getActivity(), DetailActivity.class).putExtra(Intent.EXTRA_TEXT, text);
-                startActivity(intent);
-            }
-        });
-        View header = getActivity().getLayoutInflater().inflate(R.layout.fragment_today, listView, false);
-        listView.addHeaderView(header);
-        TextView tv1 = (TextView)rootView.findViewById(R.id.textView2);
-        Typeface header_font = Typeface.createFromAsset(getActivity().getAssets(), "fonts/plm85c.ttf");
-        tv1.setTypeface(header_font);
-        TextView banner_text = (TextView) rootView.findViewById(R.id.textView);
-        //banner_text.setText(String.valueOf(MainActivity.getThisLocation().getLatitude())+" "+String.valueOf(mLastLocation.getLongitude())+" "+String.valueOf(mLastLocation.getAccuracy()));
-
-        return rootView;
-    }
+public class SyncAdapter {/*
 
     public class FetchWeatherTask extends AsyncTask<Void, Void, String[]> {
 
-        private final String LOG_TAG = FetchWeatherTask.class.getSimpleName();
-
-        private String formatTemp(double temp) {
-            // For presentation, assume the user doesn't care about tenths of a degree.
-            SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(getActivity());
-            String units = sharedPref.getString(getString(R.string.units_key), getString(R.string.units_default));
-            if (units.equals(getString(R.string.units_f))){
-                temp = (temp*1.8)+32;
-            } else if (!units.equals(getString(R.string.units_c))){
-                Log.d(LOG_TAG, "units not found " + units);
-            }
-            long roundedTemp = Math.round(temp);
-
-            String tempStr;
-            if (roundedTemp>0){
-                tempStr = "+" + roundedTemp + "°";
-            } else {
-                tempStr = roundedTemp + "°";
-            }
-
-            return tempStr;
-        }
-
-
+        private final String LOG_TAG = MainActivity.FetchWeatherTask.class.getSimpleName();
 
         private void getWeatherDataFromJson38(String forecastJsonStr)
                 throws JSONException {
@@ -243,6 +47,7 @@ public class ForecastFragment extends Fragment {/*
                     double c_lat;
                     double c_lon;
                     double dist;
+
                     JSONObject station = stationsArray.getJSONObject(i);
                     JSONObject weatherObject = station.getJSONObject(M38_info);
                     JSONArray locationArray = station.getJSONArray(M38_coord);
@@ -254,8 +59,19 @@ public class ForecastFragment extends Fragment {/*
                     title = station.getString(M38_title);
                     pid = station.getString(M38_id);
 
+                    Location c_loc = new Location("");
                     c_lat = locationArray.getDouble(1);
                     c_lon = locationArray.getDouble(0);
+                    c_loc.setLatitude(c_lat);
+                    c_loc.setLongitude(c_lon);
+                    Log.d(LOG_TAG, title+c_lat+c_lon);
+                    if (mLastLocation!=null) {
+
+                        dist = mLastLocation.distanceTo(c_loc);
+                    }
+                    else {
+                        dist=0;
+                    }
                     try {
                         pressure = weatherObject.getDouble(M38_pres);
                     } catch (JSONException e) {
@@ -286,9 +102,11 @@ public class ForecastFragment extends Fragment {/*
                         weatherValues.put(WeatherContract.WeatherEntry.COLUMN_PRESSURE, pressure);
                         weatherValues.put(WeatherContract.WeatherEntry.COLUMN_WIND_SPEED, windSpeed);
                         weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DEGREES, windDirection);
-                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_TEMP, formatTemp(temp));
+                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_TEMP, Utils.formatTemp(getApplicationContext(), temp));
                         weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LATITUDE, c_lat);
                         weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LONGITUDE, c_lon);
+                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DISTANCE, dist);
+                        weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DISTANCE_STR, String.format(getString(R.string.elem_near_dist), Utils.formatNearDist(dist, getString(R.string.units_meters), getString(R.string.units_km))));
 
                         cVVector.add(weatherValues);
                         long rowID = db.insert(WeatherContract.WeatherEntry.TABLE_NAME, null, weatherValues);
@@ -413,12 +231,13 @@ public class ForecastFragment extends Fragment {/*
 
         @Override
         protected void onPostExecute(String[] result) {
-            if (result != null) {
-                ListPopulater();
-            }
+            mCursorAd.notifyDataSetChanged();
+            ListPopulater();
+            Log.d(LOG_TAG, "data Changed");
+
             mSwipeRefreshLayout.setRefreshing(false);
             if (!CheckConnect){
-                Toast.makeText(getActivity().getApplicationContext(), "No network connection", Toast.LENGTH_SHORT).show();
+                Toast.makeText(getApplicationContext(), "No network connection", Toast.LENGTH_SHORT).show();
             }
         }
 

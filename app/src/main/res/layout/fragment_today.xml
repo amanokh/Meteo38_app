@@ -5,7 +5,7 @@
     android:layout_height="108dp"
     android:paddingLeft="16dp"
     android:paddingRight="8dp"
-    android:background="#3f51b5">
+    android:background="?attr/colorPrimary">
 
 
     <LinearLayout

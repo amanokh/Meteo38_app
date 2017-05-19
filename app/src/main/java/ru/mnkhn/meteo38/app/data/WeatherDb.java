@@ -1,4 +1,4 @@
-package com.example.android.sunshine.app.data;
+package ru.mnkhn.meteo38.app.data;
 
 
 import android.content.Context;

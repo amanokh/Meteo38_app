@@ -1,12 +1,12 @@
-package com.example.android.sunshine.app;
+package ru.mnkhn.meteo38.app;
 
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.preference.ListPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
-import android.view.KeyEvent;
+
+import com.example.android.sunshine.app.R;
 
 /**
  * A {@link PreferenceActivity} that presents a set of application settings.
@@ -19,13 +19,13 @@ import android.view.KeyEvent;
 public class SettingsActivity extends PreferenceActivity
         implements Preference.OnPreferenceChangeListener {
 
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         addPreferencesFromResource(R.xml.pref_general);
         // For all preferences, attach an OnPreferenceChangeListener so the UI summary can be
         // updated when the preference changes.
-        bindPreferenceSummaryToValue(findPreference("location"));
         bindPreferenceSummaryToValue(findPreference("units"));
     }
 

@@ -1,39 +1,37 @@
-package com.example.android.sunshine.app;
+package ru.mnkhn.meteo38.app;
 
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.database.CursorIndexOutOfBoundsException;
 import android.database.sqlite.SQLiteDatabase;
-import android.graphics.Typeface;
 import android.location.Location;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.preference.PreferenceManager;
 import android.support.v4.widget.SimpleCursorAdapter;
 import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
+import android.widget.AdapterView;
+import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.example.android.sunshine.app.data.LocationRequest;
-import com.example.android.sunshine.app.data.WeatherContract;
-import com.example.android.sunshine.app.data.WeatherDb;
-import com.example.android.sunshine.app.data.WeatherDbHelper;
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationServices;
+import com.example.android.sunshine.app.R;
+
+import ru.mnkhn.meteo38.app.data.LocationRequest;
+import ru.mnkhn.meteo38.app.data.WeatherAdapter;
+import ru.mnkhn.meteo38.app.data.WeatherContract;
+import ru.mnkhn.meteo38.app.data.WeatherDb;
+import ru.mnkhn.meteo38.app.data.WeatherDbHelper;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -45,105 +43,142 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.Vector;
-import java.util.logging.Handler;
 
 
 public class MainActivity extends AppCompatActivity{
 
-    private GoogleApiClient mGoogleApiClient;
     private Location mLastLocation;
     private SwipeRefreshLayout mSwipeRefreshLayout;
     private boolean CheckConnect;
-    public boolean LocationNull;
-    public boolean PermissionNull;
     private WeatherDbHelper dbHelper;
     private WeatherDb mDbAdapter;
-    private Cursor mCursor;
+    private WeatherAdapter weatherAdapter;
+    private Cursor mCursorName;
     private Cursor mCursorLocation;
     private SimpleCursorAdapter mCursorAd;
     private ListView listView;
-    public Timer mTimer;
+    public static Timer mTimer;
+    private String JsonStr;
+    private int SortBool;
+    public static boolean isUpdated;
 
 
-    private void WeatherExecuter(Location location) {
+    private void WeatherExecuter() {
         FetchWeatherTask weatherTask = new FetchWeatherTask();
-        weatherTask.execute(location);
+        weatherTask.execute();
     }
-    private void LocationGet(Context context) {
-        LocationRequest.requestSingleUpdate(context, findViewById(R.id.snackbarPosition),
-                new LocationRequest.LocationCallback() {
-                    @Override
-                    public void onNewLocationAvailable(Location location) {
-                        if (mTimer != null) {
-                            mTimer.cancel();
-                        }
-                        Log.d("Location", "my location is " + location.toString());
-                        SharedPreferences sharedPref = getApplicationContext().getSharedPreferences("mypref", Context.MODE_PRIVATE);
-                        SharedPreferences.Editor editor = sharedPref.edit();
+    private void LocationGet() {
+        final Runnable updLoc = new Runnable() {
+            public void run() {
+                LocationRequest.requestSingleUpdate(getApplicationContext(), findViewById(R.id.snackbarPosition), MainActivity.this,
+                        new LocationRequest.LocationCallback() {
+                            @Override
+                            public void onNewLocationAvailable(Location location) {
+                                if (mTimer != null) {
+                                    mTimer.cancel();
+                                }
+                                Log.d("Location", "my location is " + location.toString());
+                                SharedPreferences sharedPref = getApplicationContext().getSharedPreferences("mypref", Context.MODE_PRIVATE);
+                                SharedPreferences.Editor editor = sharedPref.edit();
 
-                        editor.putString("LOC_LAT", String.valueOf(location.getLatitude())).apply();
-                        editor.putString("LOC_LONG", String.valueOf(location.getLongitude())).apply();
-                        WeatherExecuter(location);
-                        LocationNull=false;
-                    }
-                });
+                                editor.putString("LOC_LAT", String.valueOf(location.getLatitude())).apply();
+                                editor.putString("LOC_LONG", String.valueOf(location.getLongitude())).apply();
+                                mLastLocation=location;
+                                Thread tt = new Thread(new Runnable() {
+                                    public void run() {
+                                        try {
+                                            getWeatherDataFromJson38(JsonStr, mLastLocation);
+                                            Log.d("Location", "пуеЦОЫЩТ туц еркуфвЭ");
+                                        } catch (JSONException e) {
+                                            Log.e("parseJson", e.getMessage(), e);
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                });
+                                tt.start();
+
+                            }
+                        });
+            }
+        };
+        Thread t = new Thread(new Runnable() {
+            public void run() {
+                runOnUiThread(updLoc);
+            }
+        });
+        t.start();
+
+    }
+    private void UpdWithoutLoc(){
+
+
+        Log.d("timer", "worked");
+        SharedPreferences sharedPref = getApplicationContext().getSharedPreferences("mypref", Context.MODE_PRIVATE);
+        Location oldLocation = new Location("");
+        String lat = sharedPref.getString("LOC_LAT", "0");
+        Log.d("Updater", "location"+ lat);
+        String lon = sharedPref.getString("LOC_LONG", "0");
+        Log.d("Updater", "location"+ lon);
+        oldLocation.setLatitude(Double.parseDouble(lat));
+        oldLocation.setLongitude(Double.parseDouble(lon));
+
+
+        try {
+            getWeatherDataFromJson38(JsonStr, oldLocation);
+            Log.d("Updater", "added oldLoc,started getDataJSON");
+
+
+        } catch (JSONException e) {
+            Log.e("parseJson", e.getMessage(), e);
+            e.printStackTrace();
+        }
+
+        Log.d("Updater", "location didnt get");
     }
     private void Updater() {
-        mSwipeRefreshLayout.setRefreshing(true);
-        LocationNull=true;
-        LocationGet(getApplicationContext());
+        isUpdated = false;
+
         mTimer = new Timer();
+        Log.d("timer", "started");
         TimerTask mTimerTask = new TimerTask() {
         public void run() {
-            runOnUiThread(new Runnable() {
-
-                @Override
-                public void run() {
-                    if (LocationNull) {
-                        SharedPreferences sharedPref = getApplicationContext().getSharedPreferences("mypref", Context.MODE_PRIVATE);
-                        Location oldLocation = new Location("");
-                        String lat = sharedPref.getString("LOC_LAT", "0");
-                        Log.d("Updater", "location"+ lat);
-                        String lon = sharedPref.getString("LOC_LONG", "0");
-                        Log.d("Updater", "location"+ lon);
-                        oldLocation.setLatitude(Double.parseDouble(lat));
-                        oldLocation.setLongitude(Double.parseDouble(lon));
-
-                        Location checkLoc = new Location("");
-                        checkLoc.setLatitude(0);
-                        checkLoc.setLongitude(0);
-
-                        if (!oldLocation.equals(checkLoc)){
-                            WeatherExecuter(oldLocation);
-                        } else {
-                            WeatherExecuter(checkLoc);
-                        }
-                        Log.d("Updater", "location didnt get");
-                    }
-                }
-            });
+            isUpdated=true;
+            UpdWithoutLoc();
         }};
         mTimer.schedule(mTimerTask, 6000);
+        LocationGet();
+        new Timer().schedule(new TimerTask(){
+            public void run(){
+                if (!isUpdated){
+                    Log.d("timer_second", "started");
+                    UpdWithoutLoc();
+                }
+            }
+        },500);
     }
     private void ListPopulater(){
-
+        Log.d("ListPop", "started");
         mDbAdapter = new WeatherDb(this);
-        mCursor = mDbAdapter.getByLocation();
-
+        mCursorName = mDbAdapter.getByName();
+        mCursorLocation = mDbAdapter.getByLocation();
 
         String[] from = new String[] { WeatherContract.WeatherEntry.COLUMN_TITLE, WeatherContract.WeatherEntry.COLUMN_TEMP, WeatherContract.WeatherEntry.COLUMN_DISTANCE_STR};
         int[] to = new int[] { R.id.list_item_title_textview, R.id.list_item_forecast_temp, R.id.list_item_addr_textview};
+        if (SortBool==1){
+            mCursorAd = new SimpleCursorAdapter(this, R.layout.list_item_forecast, mCursorLocation, from, to, 0);
+        } else {
+            mCursorAd = new SimpleCursorAdapter(this, R.layout.list_item_forecast, mCursorName, from, to, 0);
+        }
+        /*if (SortBool==1){
+            weatherAdapter = new WeatherAdapter(this,  mCursorLocation);
+        } else {
+            weatherAdapter = new WeatherAdapter(this,  mCursorName);
+        }
+        listView.setAdapter(weatherAdapter);*/
 
-        mCursorAd = new SimpleCursorAdapter(this, R.layout.list_item_forecast, mCursor, from, to, 0);
-        listView.setAdapter(mCursorAd);
-
-        mCursorLocation = mDbAdapter.getByLocation();
         if (mCursorLocation.moveToFirst()) {
             int titleColIndex = mCursorLocation.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TITLE);
             int tempColIndex = mCursorLocation.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TEMP);
@@ -159,21 +194,27 @@ public class MainActivity extends AppCompatActivity{
 
             details_tv.setText(near_title);
             temp_tv.setText(near_temp);
-            dist_tv.setText(String.format(getString(R.string.title_near_dist), Utils.formatNearDist(near_dist, getString(R.string.units_meters), getString(R.string.units_km))));
+            dist_tv.setText(String.format(getString(R.string.title_near_dist), Utils.formatNearDist(getApplicationContext(),near_dist)));
         }
-        mDbAdapter.close();
+        //mDbAdapter.close();
     }
 
-    private void showMap() { //button
-        SharedPreferences sharedPref = PreferenceManager.getDefaultSharedPreferences(this);
-        String location = sharedPref.getString(getString(R.string.location_key), getString(R.string.location_default));
-        Uri geoUri = Uri.parse("geo:0,0?").buildUpon().appendQueryParameter("q", location).build();
+    private void showMap(int position) { //button
+        try {
+            Cursor cursor = mCursorAd.getCursor();
+            cursor.moveToPosition(position);
+            int lonColIndex = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_LONGITUDE);
+            int latColIndex = cursor.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_LATITUDE);
 
-        Intent intent = new Intent(Intent.ACTION_VIEW);
-        intent.setData(geoUri);
-        if (intent.resolveActivity(this.getPackageManager()) != null) {
-            startActivity(intent);
-        }
+            String l = cursor.getFloat(latColIndex) + "," + cursor.getFloat(lonColIndex);
+            Uri geoUri = Uri.parse("geo:0,0?").buildUpon().appendQueryParameter("q", l).build();
+
+            Intent intent = new Intent(Intent.ACTION_VIEW);
+            intent.setData(geoUri);
+            if (intent.resolveActivity(this.getPackageManager()) != null) {
+                startActivity(intent);
+            }
+        } catch (CursorIndexOutOfBoundsException e) {}
     }
 
 
@@ -186,7 +227,7 @@ public class MainActivity extends AppCompatActivity{
         mSwipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener(){
             @Override
             public void onRefresh() {
-                Updater();
+                WeatherExecuter();
             }});
 
 
@@ -194,13 +235,40 @@ public class MainActivity extends AppCompatActivity{
                 android.R.color.holo_green_light,
                 android.R.color.holo_orange_light,
                 android.R.color.holo_red_light);
+        SharedPreferences sharedPref = getApplicationContext().getSharedPreferences("mypref", Context.MODE_PRIVATE);
+        SortBool = Integer.parseInt(sharedPref.getString("SORT_BOOL", "1"));
+        ImageButton button = (ImageButton) findViewById(R.id.sort_button);
+        View.OnClickListener SortOnClick = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                SharedPreferences sharedPref = getApplicationContext().getSharedPreferences("mypref", Context.MODE_PRIVATE);
+                SharedPreferences.Editor editor = sharedPref.edit();
+                if (SortBool == 1) {
+                    editor.putString("SORT_BOOL", String.valueOf(0)).apply();
+                    SortBool=0;
 
+                } else {
+                    editor.putString("SORT_BOOL", String.valueOf(1)).apply();
+                    SortBool=1;
+                }
+                ListPopulater();
+            }
+        };
+        button.setOnClickListener(SortOnClick);
         listView = (ListView) findViewById(R.id.listview_forecast);
         View footer = getLayoutInflater().inflate(R.layout.footer_link, null);
         listView.addFooterView(footer);
         //TextView tv1 = (TextView)findViewById(R.id.near_temp);
         //Typeface header_font = Typeface.createFromAsset(this.getAssets(), "fonts/plm85c.ttf");
         //tv1.setTypeface(header_font);
+        listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, int pos, long id) {
+                Log.d("item", "clicked");
+                showMap(pos);
+                return true;
+            }
+        });
 
         getSupportActionBar().setElevation(0);
         ListPopulater();
@@ -210,16 +278,20 @@ public class MainActivity extends AppCompatActivity{
 
 
     public void onStart(){
+        mSwipeRefreshLayout.setRefreshing(true);
+        WeatherExecuter();
         super.onStart();
     }
     public void onStop(){
+
+        mSwipeRefreshLayout.setRefreshing(false);
         super.onStop();
     }
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.main, menu);
-        getMenuInflater().inflate(R.menu.refresh_button, menu);
+        //getMenuInflater().inflate(R.menu.refresh_button, menu);
         return true;
     }
 
@@ -235,10 +307,11 @@ public class MainActivity extends AppCompatActivity{
             startActivity(new Intent(this, SettingsActivity.class));
             return true;
         }
-        if (id == R.id.action_refresh) {
-            Updater();
+        /*if (id == R.id.action_refresh) {
+            mSwipeRefreshLayout.setRefreshing(true);
+            WeatherExecuter();
             return true;
-        }
+        }*/
 
         return super.onOptionsItemSelected(item);
     }
@@ -257,7 +330,7 @@ public class MainActivity extends AppCompatActivity{
         final String M38_pres = "p";
         final String M38_addr = "addr";
 
-
+        Log.d(LOG_TAG, "started");
         JSONArray stationsArray = new JSONArray(forecastJsonStr);
 
         try {
@@ -342,45 +415,26 @@ public class MainActivity extends AppCompatActivity{
                     weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LATITUDE, c_lat);
                     weatherValues.put(WeatherContract.WeatherEntry.COLUMN_LONGITUDE, c_lon);
                     weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DISTANCE, dist);
-                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DISTANCE_STR, String.format(getString(R.string.elem_near_dist), Utils.formatNearDist(dist, getString(R.string.units_meters), getString(R.string.units_km))));
+                    weatherValues.put(WeatherContract.WeatherEntry.COLUMN_DISTANCE_STR, String.format(getString(R.string.elem_near_dist), Utils.formatNearDist(getApplicationContext(),dist)));
 
                     cVVector.add(weatherValues);
                     long rowID = db.insert(WeatherContract.WeatherEntry.TABLE_NAME, null, weatherValues);
                 }
-            }/*
-            if ( cVVector.size() > 0 ) {
-                ContentValues[] cvArray = new ContentValues[cVVector.size()];
-                cVVector.toArray(cvArray);
-
-                // удаляем все записи
-
-
-                Cursor c = db.query(WeatherContract.WeatherEntry.TABLE_NAME, null, null, null, null, null, null);
-
-
-                // ставим позицию курсора на первую строку выборки
-                // если в выборке нет строк, вернется false
-                if (c.moveToFirst()) {
-
-                    // определяем номера столбцов по имени в выборке
-                    int idColIndex = c.getColumnIndex(WeatherContract.WeatherEntry._ID);
-                    int nameColIndex = c.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TITLE);
-                    int emailColIndex = c.getColumnIndex(WeatherContract.WeatherEntry.COLUMN_TEMP);
-
-                    do {
-                        // получаем значения по номерам столбцов и пишем все в лог
-                        Log.d(LOG_TAG,
-                                "ID = " + c.getInt(idColIndex) +
-                                        ", name = " + c.getString(nameColIndex) +
-                                        ", temp = " + c.getString(emailColIndex));
-                        // переход на следующую строку
-                        // а если следующей нет (текущая - последняя), то false - выходим из цикла
-                    } while (c.moveToNext());
-                } else
-                    Log.d(LOG_TAG, "0 rows");
-                c.close();
-            }*/
-
+            }
+            final Runnable updUI = new Runnable() {
+                public void run() {
+                    ListPopulater();
+                    mCursorAd.notifyDataSetChanged();
+                    Log.d("onPostExecute_st_data", "data Changed");
+                    mSwipeRefreshLayout.setRefreshing(false);
+                }
+            };
+            Thread t = new Thread(new Runnable() {
+                public void run() {
+                    runOnUiThread(updUI);
+                }
+            });
+            t.start();
         } catch (JSONException e) {
             Log.e(LOG_TAG, e.getMessage(), e);
             e.printStackTrace();
@@ -388,9 +442,9 @@ public class MainActivity extends AppCompatActivity{
     }
 
 
-    public class FetchWeatherTask extends AsyncTask<Location, Void, String[]> {
+    public class FetchWeatherTask extends AsyncTask<String[], Void, String[]> {
         @Override
-        protected String[] doInBackground(Location... loc) {
+        protected String[] doInBackground(String[]... params) {
             final String LOG_TAG = "doInBackground_st_data";
             // These two need to be declared outside the try/catch
             // so that they can be closed in the finally block.
@@ -440,25 +494,22 @@ public class MainActivity extends AppCompatActivity{
                 }
             }
 
-            try {
-                getWeatherDataFromJson38(weatherJsonStr, loc[0]);
-            } catch (JSONException e) {
-                Log.e(LOG_TAG, e.getMessage(), e);
-                e.printStackTrace();
+            if (weatherJsonStr.length()!=0 && CheckConnect) {
+                JsonStr = weatherJsonStr;
+                Log.d("Async", "worked");
+                Log.d("Async", JsonStr);
+                Updater();
             }
             return null;
-
         }
 
         @Override
         protected void onPostExecute(String[] result) {
-            mCursorAd.notifyDataSetChanged();
-            ListPopulater();
-            Log.d("onPostExecute_st_data", "data Changed");
 
-            mSwipeRefreshLayout.setRefreshing(false);
+
             if (!CheckConnect){
                 Toast.makeText(getApplicationContext(), "No network connection", Toast.LENGTH_SHORT).show();
+                mSwipeRefreshLayout.setRefreshing(false);
             }
         }
 

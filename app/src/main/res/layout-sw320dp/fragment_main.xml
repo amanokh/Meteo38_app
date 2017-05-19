@@ -2,7 +2,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ForecastFragment">
+    tools:context="ru.mnkhn.meteo38.app.MainActivity">
 
     <LinearLayout
         android:layout_height="match_parent"
@@ -47,12 +47,12 @@
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
             android:id="@+id/near_temp"
-            android:textSize="48dp"
             android:textColor="@color/primary_text_default_material_dark"
             android:fontFamily="sans-serif"
             android:layout_alignParentRight="true"
             android:gravity="bottom"
-            android:paddingBottom="8dp" />
+            android:paddingBottom="8dp"
+            android:textSize="48dp" />
 
     </RelativeLayout>
     <RelativeLayout
@@ -76,7 +76,7 @@
             android:layout_marginRight="8dp"
             android:layout_marginTop="8dp"
             android:layout_alignParentRight="true"
-            android:src="@drawable/ic_swap"
+            app:srcCompat="@drawable/ic_swap"
             style="?android:attr/borderlessButtonStyle"
             android:id="@+id/sort_button" />
     </RelativeLayout>
@@ -89,10 +89,12 @@
             android:id="@+id/listview_forecast"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:divider="@android:color/transparent"
+            android:divider="#ebebeb"
+            android:dividerHeight="2px"
             android:background="#ffffff" />
     </android.support.v4.widget.SwipeRefreshLayout>
     </LinearLayout>
+
     <android.support.design.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"

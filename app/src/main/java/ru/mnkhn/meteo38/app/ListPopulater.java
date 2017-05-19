@@ -1,8 +1,4 @@
-package com.example.android.sunshine.app;
-
-import android.widget.TextView;
-
-import com.example.android.sunshine.app.data.WeatherContract;
+package ru.mnkhn.meteo38.app;
 
 /**
  * Created by Антон on 24.04.2017.

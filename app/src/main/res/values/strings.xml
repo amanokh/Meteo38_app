@@ -28,6 +28,8 @@
     <string name="location_request">Allow app to get the location first</string>
     <string name="location_settings">Permissions</string>
     <string name="turn_on">Enable</string>
+    <string name="units_ms">" m/s"</string>
+    <string name="lang">en</string>
 
 
     <!-- TODO: Remove or change this placeholder text -->
